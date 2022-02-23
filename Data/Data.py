@@ -329,4 +329,136 @@ import numpy as np
 # plt.savefig("Lab Source Values mean Figure")
 # 
 # =============================================================================
+
+source = np.load("CNN Source Values and Transfer Learning Code Test Run Data0, optimizer = adam, loss = mse.npy")
+source1 = np.load("CNN Source Values and Transfer Learning Code Test Run Data1, optimizer = adam, loss = mse.npy")
+source2 = np.load("CNN Source Values and Transfer Learning Code Test Run Data2, optimizer = adam, loss = mse.npy")
+source3 = np.load("CNN Source Values and Transfer Learning Code Test Run Data3, optimizer = adam, loss = mse.npy")    
+
+x_valuesenv1Source = []
+y_valuesenv1Source = []
+
+x_valuesenv1NC = []
+y_valuesenv1NC = []
+
+x_valuesenv1ML = []
+y_valuesenv1ML = []
+
+x_valuesenv1Lab = []
+y_valuesenv1Lab = []
+
+
+x_valuesenv2Source = []
+y_valuesenv2Source = []
+
+x_valuesenv2Lab = []
+y_valuesenv2Lab = []
+
+x_valuesenv2NC = []
+y_valuesenv2NC = []
+
+x_valuesenv2SC = []
+y_valuesenv2SC = []
+
+
+x_valuesenv3Source = []
+y_valuesenv3Source = []
+
+x_valuesenv3Lab = []
+y_valuesenv3Lab = []
+
+x_valuesenv3ML = []
+y_valuesenv3ML = []
+
+x_valuesenv3SC = []
+y_valuesenv3SC = []
+
+
+x_valuesenv4Source = []
+y_valuesenv4Source = []
+
+x_valuesenv4NC = []
+y_valuesenv4NC = []
+
+x_valuesenv4ML = []
+y_valuesenv4ML = []
+
+x_valuesenv4SC = []
+y_valuesenv4SC = []
+
+
+for i in range(17):
+    x_valuesenv1Source.append(float(source[i][0][1]))
+    y_valuesenv1Source.append((float(source[i][0][2]) + float(source1[i][0][2]) + float(source2[i][0][2]) + float(source3[i][0][2]))*0.25)
+                            
     
+    x_valuesenv1Lab.append(float(source[i][1][1]))
+    y_valuesenv1Lab.append((float(source[i][1][2]) + float(source1[i][1][2]) + float(source2[i][1][2]) + float(source3[i][1][2]))*0.25)
+    
+    x_valuesenv1NC.append(float(source[i][2][1]))
+    y_valuesenv1NC.append((float(source[i][2][2]) + float(source1[i][2][2]) + float(source2[i][2][2]) + float(source3[i][2][2]))*0.25)
+    
+    x_valuesenv1ML.append(float(source[i][3][1]))
+    y_valuesenv1ML.append((float(source[i][3][2]) + float(source1[i][3][2]) + float(source2[i][3][2]) + float(source3[i][3][2]))*0.25)
+    
+
+    
+for i in range(17, 34):
+    x_valuesenv2Source.append(float(source[i][0][1]))
+    y_valuesenv2Source.append((float(source[i][0][2]) + float(source1[i][0][2]) + float(source2[i][0][2]) + float(source3[i][0][2]))*0.25)
+                            
+    
+    x_valuesenv2Lab.append(float(source[i][1][1]))
+    y_valuesenv2Lab.append((float(source[i][1][2]) + float(source1[i][1][2]) + float(source2[i][1][2]) + float(source3[i][1][2]))*0.25)
+    
+    x_valuesenv2NC.append(float(source[i][2][1]))
+    y_valuesenv2NC.append((float(source[i][2][2]) + float(source1[i][2][2]) + float(source2[i][2][2]) + float(source3[i][2][2]))*0.25)
+    
+    x_valuesenv2SC.append(float(source[i][3][1]))
+    y_valuesenv2SC.append((float(source[i][3][2]) + float(source1[i][3][2]) + float(source2[i][3][2]) + float(source3[i][3][2]))*0.25)    
+    
+    
+    
+    
+    
+    
+    
+for i in range(34, 51):
+    x_valuesenv3Source.append(float(source[i][0][1]))
+    y_valuesenv3Source.append((float(source[i][0][2]) + float(source1[i][0][2]) + float(source2[i][0][2]) + float(source3[i][0][2]))*0.25)
+                            
+    
+    x_valuesenv3Lab.append(float(source[i][1][1]))
+    y_valuesenv3Lab.append((float(source[i][1][2]) + float(source1[i][1][2]) + float(source2[i][1][2]) + float(source3[i][1][2]))*0.25)
+    
+    x_valuesenv3ML.append(float(source[i][2][1]))
+    y_valuesenv3ML.append((float(source[i][2][2]) + float(source1[i][2][2]) + float(source2[i][2][2]) + float(source3[i][2][2]))*0.25)
+    
+    x_valuesenv3SC.append(float(source[i][3][1]))
+    y_valuesenv3SC.append((float(source[i][3][2]) + float(source1[i][3][2]) + float(source2[i][3][2]) + float(source3[i][3][2]))*0.25)        
+    
+    
+    
+    
+    
+for i in range(51, 68):
+    x_valuesenv4Source.append(float(source[i][0][1]))
+    y_valuesenv4Source.append((float(source[i][0][2]) + float(source1[i][0][2]) + float(source2[i][0][2]) + float(source3[i][0][2]))*0.25)
+                            
+    
+    x_valuesenv4NC.append(float(source[i][1][1]))
+    y_valuesenv4NC.append((float(source[i][1][2]) + float(source1[i][1][2]) + float(source2[i][1][2]) + float(source3[i][1][2]))*0.25)
+    
+    x_valuesenv4ML.append(float(source[i][2][1]))
+    y_valuesenv4ML.append((float(source[i][2][2]) + float(source1[i][2][2]) + float(source2[i][2][2]) + float(source3[i][2][2]))*0.25)
+    
+    x_valuesenv4SC.append(float(source[i][3][1]))
+    y_valuesenv4SC.append((float(source[i][3][2]) + float(source1[i][3][2]) + float(source2[i][3][2]) + float(source3[i][3][2]))*0.25)  
+    
+    
+plt.figure(0)
+plt.scatter(x_valuesenv4, y_valuesenv4)
+plt.xlabel("Target Size")
+plt.ylabel("RMSE")
+plt.legend(("Lab Mean",))
+plt.savefig("Lab Source Values mean Figure")    
