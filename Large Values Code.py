@@ -15,25 +15,25 @@ import math
 Data = []
 for env in range(4):
     if(env==0):
-        alldata = np.load("Complex_S21_Sport_Hall.npy")
+        alldata = np.load("Complex_S21_Sport_Hall.npy"); env0 = 'SC'
         alldata1 = np.load("Complex_S21_Lab_139.npy"); env1 = 'Lab 139'
         alldata2 = np.load("Complex_S21_Narrow_Corridor_71.npy"); env2 = 'NC'
         alldata3 = np.load("Complex_S21_Main_Lobby_71.npy"); env3 = 'ML'
     
     elif(env==1):
-        alldata = np.load("Complex_S21_Main_Lobby_71.npy")
+        alldata = np.load("Complex_S21_Main_Lobby_71.npy"); env0 = 'ML
         alldata1 = np.load("Complex_S21_Lab_139.npy"); env1 = 'Lab 139'
         alldata2 = np.load("Complex_S21_Narrow_Corridor_71.npy"); env2 = 'NC'
         alldata3 = np.load("Complex_S21_Sport_Hall.npy"); env3 = 'SC'   
     
     elif(env==2):
-        alldata = np.load("Complex_S21_Narrow_Corridor_71.npy")
+        alldata = np.load("Complex_S21_Narrow_Corridor_71.npy"); env0 = 'NC'
         alldata1 = np.load("Complex_S21_Lab_139.npy"); env1 = 'Lab 139'
         alldata2 = np.load("Complex_S21_Main_Lobby_71.npy") ; env2 = 'ML'
         alldata3 = np.load("Complex_S21_Sport_Hall.npy") ; env3 = 'SC'  
     
     elif(env==3):
-        alldata = np.load("Complex_S21_Lab_139.npy")
+        alldata = np.load("Complex_S21_Lab_139.npy"); env0 = 'Lab 139'
         alldata1 = np.load("Complex_S21_Narrow_Corridor_71.npy"); env1 = 'NC'
         alldata2 = np.load("Complex_S21_Main_Lobby_71.npy"); env2 = 'ML'
         alldata3 = np.load("Complex_S21_Sport_Hall.npy") ; env3 = 'SC'
@@ -245,7 +245,15 @@ for env in range(4):
             1))
             testData3 = np.reshape(testData3, (testData3.shape[0], testData3.shape[1], testData3.shape[2], 1))
 
-            SourceModel = keras.models.load_model("1470 Source Model") #First Stage
+            if env0 == 'MC': #First Stage
+                SourceModel = keras.models.load_model("1470 Source Model MC")
+            elif env0 == 'NC':
+                SourceModel = keras.models.load_model("1470 Source Model NC")
+            elif env0 == 'SC':
+                SourceModel = keras.models.load_model("1470 Source Model SC")
+            elif env0 == 'Lab 139':
+                SourceModel = keras.models.load_model("1470 Source Model Lab 139")
+
 
             SourceModel.layers[0].trainable = True
             SourceModel.layers[1].trainable = True
@@ -257,7 +265,12 @@ for env in range(4):
             SourceModel.layers[7].trainable = True
             SourceModel.layers[8].trainable = True
             SourceModel.layers[9].trainable = True
-
+            
+            reconstructed_model2.compile(optimizer='adam', loss='mse', metrics=['mse'])
+            lrate1 = LearningRateScheduler(step_decay1)
+            callbacklist1 = [lrate1]
+            
+            
             batch_size = 32  # 64
             nb_epoch = 100  # 400 200
 
@@ -265,32 +278,30 @@ for env in range(4):
             callbacklist = [lrate]
 
             
-            myPred = SourceModel.predict(testData)
-
+            myPred = SourceModel.predict(testData) #Testing test data0 and calcualting RMSE from source
             myPreddiff = myPred - testTarget
             dis = np.sqrt(np.power(myPreddiff[:, 0], 2) + np.power(myPreddiff[:, 1], 2))
             test_RMSE = 12.5 * np.sqrt(np.sum(np.power(dis, 2)) / (len(dis)))
-
-
-            MSE1 = np.square(myPreddiff).mean()
-            RMSE1.append(math.sqrt(MSE1))
-
             testRMSE_all.append(test_RMSE)
             results_all.append(myPred)
             testTarget_all.append(testTarget)
+
+            MSE1 = np.square(myPreddiff).mean()
+            RMSE1.append(math.sqrt(MSE1))
             SourceModel.save("my_model")
 
-            myPred = SourceModel.predict(testData1)
+            myPred = SourceModel.predict(testData1) #testing data1 and calcualting RMSE from target1
             myPreddiff = myPred - testTarget1
             dis = np.sqrt(np.power(myPreddiff[:, 0], 2) + np.power(myPreddiff[:, 1], 2))
-
+            test_RMSE11 = 12.5 * np.sqrt(np.sum(np.power(dis, 2)) / (len(dis)))
+            testRMSE_all11.append(test_RMSE11)
+            
             MSE2 = np.square(myPreddiff).mean()
             RMSE2.append(math.sqrt(MSE2))
 
-            test_RMSE11 = 12.5 * np.sqrt(np.sum(np.power(dis, 2)) / (len(dis)))
-            testRMSE_all11.append(test_RMSE11)
 
-            myPred = SourceModel.predict(testData2)
+
+            myPred = SourceModel.predict(testData2) #testing data2 and calculating RMSE from target2
             myPreddiff = myPred - testTarget2
             dis = np.sqrt(np.power(myPreddiff[:, 0], 2) + np.power(myPreddiff[:, 1], 2))
             test_RMSE22 = 12.5 * np.sqrt(np.sum(np.power(dis, 2)) / (len(dis)))
@@ -300,15 +311,18 @@ for env in range(4):
             RMSE3.append(math.sqrt(MSE3))
 
 
-            myPred = SourceModel.predict(testData3)
+            myPred = SourceModel.predict(testData3) #testing data3 and calculating RMSE from target3
             myPreddiff = myPred - testTarget3
             dis = np.sqrt(np.power(myPreddiff[:, 0], 2) + np.power(myPreddiff[:, 1], 2))
             test_RMSE33 = 12.5 * np.sqrt(np.sum(np.power(dis, 2)) / (len(dis)))
             testRMSE_all33.append(test_RMSE33)
+            
             MSE4 = np.square(myPreddiff).mean()
             RMSE4.append(math.sqrt(MSE4))
 
-            reconstructed_model2 = keras.models.load_model("my_model") #Second Stage
+
+####################################################### Second Stage
+            reconstructed_model2 = keras.models.load_model("my_model")
 
             reconstructed_model2.layers[0].trainable = True
             reconstructed_model2.layers[1].trainable = True
@@ -327,21 +341,18 @@ for env in range(4):
             history = reconstructed_model2.fit(trainData1, trainTarget1, batch_size=batch_size, verbose=0,
                                                epochs=nb_epoch, callbacks=callbacklist1)
 
-            myPred = reconstructed_model2.predict(testData1)
+            myPred = reconstructed_model2.predict(testData1) #test data 1 only
             myPreddiff = myPred - testTarget1
             dis = np.sqrt(np.power(myPreddiff[:, 0], 2) + np.power(myPreddiff[:, 1], 2))
             test_RMSE2 = 12.5 * np.sqrt(np.sum(np.power(dis, 2)) / 490.0)
             testRMSE_all2.append(test_RMSE2)
+            
             MSE5 = np.square(myPreddiff).mean()
             RMSE5.append(math.sqrt(MSE5))
 
             reconstructed_model2.save("reconstructed_model2")
 
-            # We will use the unlabelled data to try to do some embedding matching or output matching
-
-
-########################CHECK#################
-
+######################### Third Stage
             k12 = 1
             error_trace = 0
             reconstructed_model = keras.models.load_model("my_model")
@@ -353,7 +364,8 @@ for env in range(4):
                                                     trainData1_unsupervisied1.shape[1],
                                                     trainData1_unsupervisied1.shape[2], 1])
 
-            reconstructed_model.layers[0].trainable = True #Third Stage
+
+            reconstructed_model.layers[0].trainable = True
             reconstructed_model.layers[1].trainable = True
             reconstructed_model.layers[2].trainable = True
             reconstructed_model.layers[3].trainable = True
@@ -371,7 +383,7 @@ for env in range(4):
             m = Model(inputs=reconstructed_model1.input, outputs=model_output)
             proxy_label_data = m.predict(trainData1)
             cur_dim = proxy_label_data.shape[1]
-            #            proxy_label_data = np.reshape(proxy_label_data,(proxy_label_data.shape[1],proxy_label_data.shape[0],1))
+            # proxy_label_data = np.reshape(proxy_label_data,(proxy_label_data.shape[1],proxy_label_data.shape[0],1))
 
 
             model_input2 = Input(shape=(cur_dim,), name='input_11')
@@ -416,6 +428,7 @@ for env in range(4):
             myPreddiff = myPred - testTarget1
             dis = np.sqrt(np.power(myPreddiff[:, 0], 2) + np.power(myPreddiff[:, 1], 2))
             test_RMSE1 = 12.5 * np.sqrt(np.sum(np.power(dis, 2)) / 490.0)
+            
             MSE6 = np.square(myPreddiff).mean()
             RMSE6.append(math.sqrt(MSE6))
 
@@ -424,13 +437,16 @@ for env in range(4):
 
             K.clear_session()
 
-            env11 = (train_portion, np.mean(RMSE1))
-            env22 = (target_portion, np.mean(RMSE2))
-            env33 = (target_portion, np.mean(RMSE3))
-            env44 = (target_portion, np.mean(RMSE4))
-            env55 = (target_portion, np.mean(RMSE5))
-            env66 = (target_portion, np.mean(RMSE6))
 
-            Data.append((env11, env22, env33, env44, env55, env66))
-            print(Data)
+
+        env11 = (train_portion, np.mean(RMSE1))
+        env22 = (target_portion, np.mean(RMSE2))
+        env33 = (target_portion, np.mean(RMSE3))
+        env44 = (target_portion, np.mean(RMSE4))
+        env55 = (target_portion, np.mean(RMSE5))
+        env66 = (target_portion, np.mean(RMSE6))
+
+        Data.append((env11, env22, env33, env44, env55, env66))
+        print(Data)
+        
 np.save("CNN Large Values Code Test Run Data1, optimizer = adam, loss = mse", Data)
