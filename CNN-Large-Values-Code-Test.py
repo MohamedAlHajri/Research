@@ -20,7 +20,48 @@ def step_decay1(epoch):
         return 0.00001
     return 0.0005
 
+def SmallestEUCDistance(LD, UD):
+    """
+    
 
+    Parameters
+    ----------
+    LD : Array of labeled data
+    UD : Array of unlabeled data
+
+    Returns
+    -------
+    the closest batch of data to the labeled data
+
+    """
+    ShapeLD = LD.shape
+    ShapeUD = UD.shape
+    
+    SLD1 = ShapeLD[0]
+    SUD1 = ShapeUD[0]
+    if SLD1 == SUD1:
+        return UD
+    J = SLD1
+    BestBatch = []
+    SmallestEUC = 100000
+    
+    for i in range(J):
+        Batch = UD[J:J*2]
+        EUC = np.linalg.norm(LD-Batch)
+        EUC = np.sum(EUC)
+        if EUC < SmallestEUC:
+            try:
+                BestBatch.pop(0)
+                BestBatch.append(Batch)
+            except:
+                BestBatch.append(Batch)
+    return BestBatch[0]
+        
+    
+    
+    
+    
+    
 for env in range(4):
     if (env == 0):
         alldata = np.load("Complex_S21_Sport_Hall.npy"); env0 = "SH"
@@ -126,7 +167,7 @@ for env in range(4):
             target_portion = 20  # ~1%
 
         elif (target_size == 1):
-            target_portion = 49  # ~2.5%
+            target_portion = 50  # ~2.5%
 
         elif (target_size == 2):
             target_portion = 98  # 5%
@@ -252,9 +293,6 @@ for env in range(4):
             # model = Model(model_input1, model_outputs)
             #
             # model.compile(optimizer='adam', loss='mse', metrics=['mse'])
-            #
-            # batch_size = 32  # 64
-            # nb_epoch = 100  # 400 200
             #
             # lrate = LearningRateScheduler(step_decay)
             # callbacklist = [lrate]
@@ -406,204 +444,213 @@ for env in range(4):
             ##Psuedolabel and refinement for first target environment
             if target_portion < 1470:
 
+                for Size in [73, 145, 218, 290, 363, 435, 508, 580, 653, 725, 798, 870, 943, 1015, 1088, 1233, 1305, 1378, 1450]:
+                    reconstructed_model4 = keras.models.load_model("Model 1")
+                    reconstructed_model5 = keras.models.load_model("reconstructed_model1")
+    
+                    trainData1_unsupervisied1 = trainData1_unsupervisied
+                    trainData1_unsupervisied1 = np.reshape(trainData1_unsupervisied1,[trainData1_unsupervisied1.shape[0],trainData1_unsupervisied1.shape[1],trainData1_unsupervisied1.shape[2],1])
+                    
+                    trainData1_unsupervisied1 = SmallestEUCDistance(trainData1, trainData1_unsupervisied1[:Size])
+                    
+                    reconstructed_model4.layers[0].trainable = True
+                    reconstructed_model4.layers[1].trainable = True
+                    reconstructed_model4.layers[2].trainable = True
+                    reconstructed_model4.layers[3].trainable = True
+                    reconstructed_model4.layers[4].trainable = True
+                    reconstructed_model4.layers[5].trainable = True
+                    reconstructed_model4.layers[6].trainable = True
+                    reconstructed_model4.layers[7].trainable = True
+                    reconstructed_model4.layers[8].trainable = True
+                    reconstructed_model4.layers[9].trainable = True
+                    reconstructed_model4.compile(optimizer='adam', loss= 'mse', metrics=['mse'])
+    
+    
+                    model_output11 = reconstructed_model5.get_layer("dense_2").output
+                    m11 = Model(inputs=reconstructed_model5.input, outputs=model_output11)
+                    proxy_label_data11 = m11.predict(trainData1)
+                    cur_dim11 = proxy_label_data11.shape[1]
+    
+    
+                    model_input2 = Input(shape=(cur_dim11,), name='input_11')
+                    Input1 = Dense(40, activation='relu', name='input_layer')(model_input2)
+                    Intermediate1 = Dense(40, activation='relu', name='intermediate_layer')(Input1)
+                    Final_output1 = Dense(2, activation='linear', name='output1')(Intermediate1)
+                    refinment_model = Model(model_input2, Final_output1)
+                    refinment_model.compile(optimizer='adam', loss='mse', metrics=['mse'])
+                    lrate1 = LearningRateScheduler(step_decay)
+                    callbacklist1 = [lrate1]
+                    refinment_model.fit(proxy_label_data11, trainTarget1, batch_size=batch_size, verbose=0, epochs=nb_epoch,
+                                        callbacks=callbacklist1)
+    
+                    refinment_model.save('refinement')
+    
+    
+                    refinemnet_model1 = keras.models.load_model("refinement")
+    
+    
+                    model_output11 = reconstructed_model5.get_layer("dense_2").output
+                    m11 = Model(inputs=reconstructed_model5.input, outputs=model_output11)
+                    pseudo_label_data12 = m11.predict(trainData1_unsupervisied1)
+    
+                    model_output12 = refinemnet_model1.get_layer("output1").output
+                    m12 = Model(inputs=refinemnet_model1.input, outputs=model_output12)
+                    pseudo_label_data_refined1 = m12.predict(pseudo_label_data12)
+    
+                    #Calcuate the euc norm, and choose the nearest
+    
+    
+                    all_data1 = np.concatenate((trainData1, trainData1_unsupervisied1))
+                    all_data_label1 = np.concatenate((trainTarget1,pseudo_label_data_refined1))
+    
+                    lrate1 = LearningRateScheduler(step_decay1)
+                    callbacklist1 = [lrate1]
+                    history = reconstructed_model4.fit(all_data1, all_data_label1, batch_size=batch_size, verbose=0, epochs=nb_epoch,callbacks=callbacklist1)
+    
+                    reconstructed_model4.save("reconstructated4_model")
+    
+                    myPred = reconstructed_model4.predict(testData1)
+                    myPreddiff = myPred-testTarget1
+                    dis = np.sqrt(np.power(myPreddiff[:,0],2)+np.power(myPreddiff[:,1],2))
+                    Target1AllWithTuningAndSemiRMSE.append((Size, 12.5*np.sqrt(np.sum(np.power(dis,2))/490.0)))
+    
+                    ##Psuedolabel and refinement for second target environment
+    
+                    
+                    reconstructed_model4 = keras.models.load_model("Model 1")
+                    reconstructed_model5 = keras.models.load_model("reconstructed_model1")
+    
+                    trainData2_unsupervisied1 = trainData2_unsupervisied
+                    trainData2_unsupervisied1 = np.reshape(trainData2_unsupervisied1, [trainData2_unsupervisied1.shape[0],
+                                                                                       trainData2_unsupervisied1.shape[1],
+                                                                                       trainData2_unsupervisied1.shape[2], 1])
+    
+                    trainData1_unsupervisied1 = SmallestEUCDistance(trainData1, trainData1_unsupervisied1[:Size])
 
-                reconstructed_model4 = keras.models.load_model("Model 1")
-                reconstructed_model5 = keras.models.load_model("reconstructed_model1")
+                    reconstructed_model4.layers[0].trainable = True
+                    reconstructed_model4.layers[1].trainable = True
+                    reconstructed_model4.layers[2].trainable = True
+                    reconstructed_model4.layers[3].trainable = True
+                    reconstructed_model4.layers[4].trainable = True
+                    reconstructed_model4.layers[5].trainable = True
+                    reconstructed_model4.layers[6].trainable = True
+                    reconstructed_model4.layers[7].trainable = True
+                    reconstructed_model4.layers[8].trainable = True
+                    reconstructed_model4.layers[9].trainable = True
+                    reconstructed_model4.compile(optimizer='adam', loss='mse', metrics=['mse'])
+    
+                    model_output21 = reconstructed_model5.get_layer("dense_2").output
+                    m21 = Model(inputs=reconstructed_model5.input, outputs=model_output21)
+                    proxy_label_data21 = m21.predict(trainData2)
+                    cur_dim21 = proxy_label_data21.shape[1]
+    
+                    model_input2 = Input(shape=(cur_dim21,), name='input_11')
+                    Input1 = Dense(40, activation='relu', name='input_layer')(model_input2)
+                    Intermediate1 = Dense(40, activation='relu', name='intermediate_layer')(Input1)
+                    Final_output1 = Dense(2, activation='linear', name='output1')(Intermediate1)
+                    refinment_model = Model(model_input2, Final_output1)
+                    refinment_model.compile(optimizer='adam', loss='mse', metrics=['mse'])
+                    lrate1 = LearningRateScheduler(step_decay)
+                    callbacklist1 = [lrate1]
+                    refinment_model.fit(proxy_label_data21, trainTarget2, batch_size=batch_size, verbose=0, epochs=nb_epoch,
+                                        callbacks=callbacklist1)
+    
+                    refinment_model.save('refinement')
+    
+                    refinemnet_model1 = keras.models.load_model("refinement")
+    
+                    model_output21 = reconstructed_model5.get_layer("dense_2").output
+                    m21 = Model(inputs=reconstructed_model5.input, outputs=model_output21)
+                    pseudo_label_data22 = m21.predict(trainData2_unsupervisied1)
+    
+                    model_output22 = refinemnet_model1.get_layer("output1").output
+                    m22 = Model(inputs=refinemnet_model1.input, outputs=model_output22)
+                    pseudo_label_data_refined21 = m22.predict(
+                        pseudo_label_data22)
+    
+                    all_data2 = np.concatenate((trainData2, trainData2_unsupervisied1))
+                    all_data_label2 = np.concatenate((trainTarget2, pseudo_label_data_refined21))
+    
+                    lrate1 = LearningRateScheduler(step_decay1)
+                    callbacklist1 = [lrate1]
+                    history = reconstructed_model4.fit(all_data2, all_data_label2, batch_size=batch_size, verbose=0,
+                                                       epochs=nb_epoch, callbacks=callbacklist1)
+    
+                    reconstructed_model4.save("reconstructated4_model")
+    
+                    myPred = reconstructed_model4.predict(testData2)
+                    myPreddiff = myPred - testTarget2
+                    dis = np.sqrt(np.power(myPreddiff[:, 0], 2) + np.power(myPreddiff[:, 1], 2))
+                    Target2AllWithTuningAndSemiRMSE.append((Size, 12.5 * np.sqrt(np.sum(np.power(dis, 2)) / 490.0)))
+    
+    
+                    ##Psuedolabel and refinement for third target environment
+    
+    
+                    reconstructed_model4 = keras.models.load_model("Model 1")
+                    reconstructed_model5 = keras.models.load_model("reconstructed_model1")
+    
+                    trainData3_unsupervisied1 = trainData3_unsupervisied
+                    trainData3_unsupervisied1 = np.reshape(trainData3_unsupervisied1, [trainData3_unsupervisied1.shape[0],
+                                                                                       trainData3_unsupervisied1.shape[1],
+                                                                                       trainData3_unsupervisied1.shape[2], 1])
+                    trainData1_unsupervisied1 = SmallestEUCDistance(trainData1, trainData1_unsupervisied1[:Size])
 
-                trainData1_unsupervisied1 = trainData1_unsupervisied
-                trainData1_unsupervisied1 = np.reshape(trainData1_unsupervisied1,[trainData1_unsupervisied1.shape[0],trainData1_unsupervisied1.shape[1],trainData1_unsupervisied1.shape[2],1])
-
-                reconstructed_model4.layers[0].trainable = True
-                reconstructed_model4.layers[1].trainable = True
-                reconstructed_model4.layers[2].trainable = True
-                reconstructed_model4.layers[3].trainable = True
-                reconstructed_model4.layers[4].trainable = True
-                reconstructed_model4.layers[5].trainable = True
-                reconstructed_model4.layers[6].trainable = True
-                reconstructed_model4.layers[7].trainable = True
-                reconstructed_model4.layers[8].trainable = True
-                reconstructed_model4.layers[9].trainable = True
-                reconstructed_model4.compile(optimizer='adam', loss= 'mse', metrics=['mse'])
-
-
-                model_output11 = reconstructed_model5.get_layer("dense_2").output
-                m11 = Model(inputs=reconstructed_model5.input, outputs=model_output11)
-                proxy_label_data11 = m11.predict(trainData1)
-                cur_dim11 = proxy_label_data11.shape[1]
-
-
-                model_input2 = Input(shape=(cur_dim11,), name='input_11')
-                Input1 = Dense(40, activation='relu', name='input_layer')(model_input2)
-                Intermediate1 = Dense(40, activation='relu', name='intermediate_layer')(Input1)
-                Final_output1 = Dense(2, activation='linear', name='output1')(Intermediate1)
-                refinment_model = Model(model_input2, Final_output1)
-                refinment_model.compile(optimizer='adam', loss='mse', metrics=['mse'])
-                lrate1 = LearningRateScheduler(step_decay)
-                callbacklist1 = [lrate1]
-                refinment_model.fit(proxy_label_data11, trainTarget1, batch_size=batch_size, verbose=0, epochs=nb_epoch,
-                                    callbacks=callbacklist1)
-
-                refinment_model.save('refinement')
-
-
-                refinemnet_model1 = keras.models.load_model("refinement")
-
-
-                model_output11 = reconstructed_model5.get_layer("dense_2").output
-                m11 = Model(inputs=reconstructed_model5.input, outputs=model_output11)
-                pseudo_label_data12 = m11.predict(trainData1_unsupervisied1)
-
-                model_output12 = refinemnet_model1.get_layer("output1").output
-                m12 = Model(inputs=refinemnet_model1.input, outputs=model_output12)
-                pseudo_label_data_refined1 = m12.predict(pseudo_label_data12) #Shouldnt it be traindata1_unsupervised and then compare refined vs not refined?
-
-                all_data1 = np.concatenate((trainData1, trainData1_unsupervisied1))
-                all_data_label1 = np.concatenate((trainTarget1,pseudo_label_data_refined1))
-
-                lrate1 = LearningRateScheduler(step_decay1)
-                callbacklist1 = [lrate1]
-                history = reconstructed_model4.fit(all_data1, all_data_label1, batch_size=batch_size, verbose=0, epochs=nb_epoch,callbacks=callbacklist1)
-
-                reconstructed_model4.save("reconstructated4_model")
-
-                myPred = reconstructed_model4.predict(testData1)
-                myPreddiff = myPred-testTarget1
-                dis = np.sqrt(np.power(myPreddiff[:,0],2)+np.power(myPreddiff[:,1],2))
-                Target1AllWithTuningAndSemiRMSE = 12.5*np.sqrt(np.sum(np.power(dis,2))/490.0)
-
-                ##Psuedolabel and refinement for second target environment
-
-                reconstructed_model4 = keras.models.load_model("Model 1")
-                reconstructed_model5 = keras.models.load_model("reconstructed_model1")
-
-                trainData2_unsupervisied1 = trainData2_unsupervisied
-                trainData2_unsupervisied1 = np.reshape(trainData2_unsupervisied1, [trainData2_unsupervisied1.shape[0],
-                                                                                   trainData2_unsupervisied1.shape[1],
-                                                                                   trainData2_unsupervisied1.shape[2], 1])
-
-                reconstructed_model4.layers[0].trainable = True
-                reconstructed_model4.layers[1].trainable = True
-                reconstructed_model4.layers[2].trainable = True
-                reconstructed_model4.layers[3].trainable = True
-                reconstructed_model4.layers[4].trainable = True
-                reconstructed_model4.layers[5].trainable = True
-                reconstructed_model4.layers[6].trainable = True
-                reconstructed_model4.layers[7].trainable = True
-                reconstructed_model4.layers[8].trainable = True
-                reconstructed_model4.layers[9].trainable = True
-                reconstructed_model4.compile(optimizer='adam', loss='mse', metrics=['mse'])
-
-                model_output21 = reconstructed_model5.get_layer("dense_2").output
-                m21 = Model(inputs=reconstructed_model5.input, outputs=model_output21)
-                proxy_label_data21 = m21.predict(trainData2)
-                cur_dim21 = proxy_label_data21.shape[1]
-
-                model_input2 = Input(shape=(cur_dim21,), name='input_11')
-                Input1 = Dense(40, activation='relu', name='input_layer')(model_input2)
-                Intermediate1 = Dense(40, activation='relu', name='intermediate_layer')(Input1)
-                Final_output1 = Dense(2, activation='linear', name='output1')(Intermediate1)
-                refinment_model = Model(model_input2, Final_output1)
-                refinment_model.compile(optimizer='adam', loss='mse', metrics=['mse'])
-                lrate1 = LearningRateScheduler(step_decay)
-                callbacklist1 = [lrate1]
-                refinment_model.fit(proxy_label_data21, trainTarget2, batch_size=batch_size, verbose=0, epochs=nb_epoch,
-                                    callbacks=callbacklist1)
-
-                refinment_model.save('refinement')
-
-                refinemnet_model1 = keras.models.load_model("refinement")
-
-                model_output21 = reconstructed_model5.get_layer("dense_2").output
-                m21 = Model(inputs=reconstructed_model5.input, outputs=model_output21)
-                pseudo_label_data22 = m21.predict(trainData2_unsupervisied1)
-
-                model_output22 = refinemnet_model1.get_layer("output1").output
-                m22 = Model(inputs=refinemnet_model1.input, outputs=model_output22)
-                pseudo_label_data_refined21 = m22.predict(
-                    pseudo_label_data22)  # Shouldnt it be traindata1_unsupervised and then compare refined vs not refined?
-
-                all_data2 = np.concatenate((trainData2, trainData2_unsupervisied1))
-                all_data_label2 = np.concatenate((trainTarget2, pseudo_label_data_refined21))
-
-                lrate1 = LearningRateScheduler(step_decay1)
-                callbacklist1 = [lrate1]
-                history = reconstructed_model4.fit(all_data2, all_data_label2, batch_size=batch_size, verbose=0,
-                                                   epochs=nb_epoch, callbacks=callbacklist1)
-
-                reconstructed_model4.save("reconstructated4_model")
-
-                myPred = reconstructed_model4.predict(testData2)
-                myPreddiff = myPred - testTarget2
-                dis = np.sqrt(np.power(myPreddiff[:, 0], 2) + np.power(myPreddiff[:, 1], 2))
-                Target2AllWithTuningAndSemiRMSE = 12.5 * np.sqrt(np.sum(np.power(dis, 2)) / 490.0)
-
-
-                ##Psuedolabel and refinement for third target environment
-
-
-                reconstructed_model4 = keras.models.load_model("Model 1")
-                reconstructed_model5 = keras.models.load_model("reconstructed_model1")
-
-                trainData3_unsupervisied1 = trainData3_unsupervisied
-                trainData3_unsupervisied1 = np.reshape(trainData3_unsupervisied1, [trainData3_unsupervisied1.shape[0],
-                                                                                   trainData3_unsupervisied1.shape[1],
-                                                                                   trainData3_unsupervisied1.shape[2], 1])
-
-                reconstructed_model4.layers[0].trainable = True
-                reconstructed_model4.layers[1].trainable = True
-                reconstructed_model4.layers[2].trainable = True
-                reconstructed_model4.layers[3].trainable = True
-                reconstructed_model4.layers[4].trainable = True
-                reconstructed_model4.layers[5].trainable = True
-                reconstructed_model4.layers[6].trainable = True
-                reconstructed_model4.layers[7].trainable = True
-                reconstructed_model4.layers[8].trainable = True
-                reconstructed_model4.layers[9].trainable = True
-                reconstructed_model4.compile(optimizer='adam', loss='mse', metrics=['mse'])
-
-                model_output31 = reconstructed_model5.get_layer("dense_2").output
-                m31 = Model(inputs=reconstructed_model5.input, outputs=model_output31)
-                proxy_label_data31 = m31.predict(trainData3)
-                cur_dim31 = proxy_label_data31.shape[1]
-
-                model_input2 = Input(shape=(cur_dim31,), name='input_11')
-                Input1 = Dense(40, activation='relu', name='input_layer')(model_input2)
-                Intermediate1 = Dense(40, activation='relu', name='intermediate_layer')(Input1)
-                Final_output1 = Dense(2, activation='linear', name='output1')(Intermediate1)
-                refinment_model = Model(model_input2, Final_output1)
-                refinment_model.compile(optimizer='adam', loss='mse', metrics=['mse'])
-                lrate1 = LearningRateScheduler(step_decay)
-                callbacklist1 = [lrate1]
-                refinment_model.fit(proxy_label_data31, trainTarget3, batch_size=batch_size, verbose=0, epochs=nb_epoch,
-                                    callbacks=callbacklist1)
-
-                refinment_model.save('refinement')
-
-                refinemnet_model1 = keras.models.load_model("refinement")
-
-                model_output31 = reconstructed_model5.get_layer("dense_2").output
-                m31 = Model(inputs=reconstructed_model5.input, outputs=model_output31)
-                pseudo_label_data32 = m31.predict(trainData3_unsupervisied1)
-
-                model_output32 = refinemnet_model1.get_layer("output1").output
-                m32 = Model(inputs=refinemnet_model1.input, outputs=model_output32)
-                pseudo_label_data_refined3 = m32.predict(
-                    pseudo_label_data32)  # Shouldnt it be traindata1_unsupervised and then compare refined vs not refined?
-
-                all_data3 = np.concatenate((trainData3, trainData3_unsupervisied1))
-                all_data_label3 = np.concatenate((trainTarget3, pseudo_label_data_refined3))
-
-                lrate1 = LearningRateScheduler(step_decay1)
-                callbacklist1 = [lrate1]
-                history = reconstructed_model4.fit(all_data3, all_data_label3, batch_size=batch_size, verbose=0,
-                                                   epochs=nb_epoch, callbacks=callbacklist1)
-
-                reconstructed_model4.save("reconstructated4_model")
-
-                myPred = reconstructed_model4.predict(testData2)
-                myPreddiff = myPred - testTarget3
-                dis = np.sqrt(np.power(myPreddiff[:, 0], 2) + np.power(myPreddiff[:, 1], 2))
-                Target3AllWithTuningAndSemiRMSE = 12.5 * np.sqrt(np.sum(np.power(dis, 2)) / 490.0)
+                    reconstructed_model4.layers[0].trainable = True
+                    reconstructed_model4.layers[1].trainable = True
+                    reconstructed_model4.layers[2].trainable = True
+                    reconstructed_model4.layers[3].trainable = True
+                    reconstructed_model4.layers[4].trainable = True
+                    reconstructed_model4.layers[5].trainable = True
+                    reconstructed_model4.layers[6].trainable = True
+                    reconstructed_model4.layers[7].trainable = True
+                    reconstructed_model4.layers[8].trainable = True
+                    reconstructed_model4.layers[9].trainable = True
+                    reconstructed_model4.compile(optimizer='adam', loss='mse', metrics=['mse'])
+    
+                    model_output31 = reconstructed_model5.get_layer("dense_2").output
+                    m31 = Model(inputs=reconstructed_model5.input, outputs=model_output31)
+                    proxy_label_data31 = m31.predict(trainData3)
+                    cur_dim31 = proxy_label_data31.shape[1]
+    
+                    model_input2 = Input(shape=(cur_dim31,), name='input_11')
+                    Input1 = Dense(40, activation='relu', name='input_layer')(model_input2)
+                    Intermediate1 = Dense(40, activation='relu', name='intermediate_layer')(Input1)
+                    Final_output1 = Dense(2, activation='linear', name='output1')(Intermediate1)
+                    refinment_model = Model(model_input2, Final_output1)
+                    refinment_model.compile(optimizer='adam', loss='mse', metrics=['mse'])
+                    lrate1 = LearningRateScheduler(step_decay)
+                    callbacklist1 = [lrate1]
+                    refinment_model.fit(proxy_label_data31, trainTarget3, batch_size=batch_size, verbose=0, epochs=nb_epoch,
+                                        callbacks=callbacklist1)
+    
+                    refinment_model.save('refinement')
+    
+                    refinemnet_model1 = keras.models.load_model("refinement")
+    
+                    model_output31 = reconstructed_model5.get_layer("dense_2").output
+                    m31 = Model(inputs=reconstructed_model5.input, outputs=model_output31)
+                    pseudo_label_data32 = m31.predict(trainData3_unsupervisied1)
+    
+                    model_output32 = refinemnet_model1.get_layer("output1").output
+                    m32 = Model(inputs=refinemnet_model1.input, outputs=model_output32)
+                    pseudo_label_data_refined3 = m32.predict(
+                        pseudo_label_data32)
+    
+                    all_data3 = np.concatenate((trainData3, trainData3_unsupervisied1))
+                    all_data_label3 = np.concatenate((trainTarget3, pseudo_label_data_refined3))
+    
+                    lrate1 = LearningRateScheduler(step_decay1)
+                    callbacklist1 = [lrate1]
+                    history = reconstructed_model4.fit(all_data3, all_data_label3, batch_size=batch_size, verbose=0,
+                                                       epochs=nb_epoch, callbacks=callbacklist1)
+    
+                    reconstructed_model4.save("reconstructated4_model")
+    
+                    myPred = reconstructed_model4.predict(testData2)
+                    myPreddiff = myPred - testTarget3
+                    dis = np.sqrt(np.power(myPreddiff[:, 0], 2) + np.power(myPreddiff[:, 1], 2))
+                    Target3AllWithTuningAndSemiRMSE.append((Size, 12.5 * np.sqrt(np.sum(np.power(dis, 2)) / 490.0)))
 
         Data.append((target_portion, SourceAllRMSE, Target1AllNoTuningRMSE, Target2AllNoTuningRMSE, Target3AllNoTuningRMSE, Target1AllWithTuningRMSE, Target2AllWithTuningRMSE, Target3AllWithTuningRMSE,
                      Target1AllWithTuningAndSemiRMSE, Target2AllWithTuningAndSemiRMSE, Target3AllWithTuningAndSemiRMSE))
