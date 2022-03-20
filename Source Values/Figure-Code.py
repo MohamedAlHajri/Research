@@ -61,7 +61,7 @@ for i in range(51, 68):
     
         
 plt.figure(0)
-plt.plot(xSC, ySC)
+plt.plot(xSC, ySC) # plt.plot(xSC,ySC,'-*'), this will make it clearer a little bit. Do the same for the rest of the graphs.
 plt.title("Source Values Sports Hall")
 plt.xlabel("Training Size")
 plt.ylabel("CM away")   
